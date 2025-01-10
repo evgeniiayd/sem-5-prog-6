@@ -3,6 +3,7 @@ import json
 import csv
 from xml.etree import ElementTree as ET
 from typing import List, Dict, Any
+import io
 
 
 # Base class
@@ -52,26 +53,40 @@ class ConcreteDecoratorJSON(CurrenciesList):
         return json.dumps(data, ensure_ascii=False, indent=4)
 
 
-# Decorator for CSV output
+# Декоратор для CSV-формата
 class ConcreteDecoratorCSV(CurrenciesList):
-    def get_currencies(self, _ids_lst) -> None:
-        """Writes currency data to a CSV file."""
+    def get_currencies(self, _ids_lst) -> str:
+        """Возвращает данные в CSV-формате с помощью объекта StringIO."""
         data = super().get_currencies(_ids_lst)
-        with open('currencies.csv', mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Currency Code", "Currency Name", "Value", "Nominal"])
-            for item in data:
-                for key, value in item.items():
-                    if isinstance(value, tuple):
-                        writer.writerow([key, value[0], value[1], value[2] if len(value) > 2 else 1])
-                    else:
-                        writer.writerow([key, None, None, None])
+
+        # Создаем объект StringIO для хранения CSV в памяти
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Записываем заголовки
+        writer.writerow(["Currency Code", "Currency Name", "Value", "Nominal"])
+
+        # Записываем данные
+        for item in data:
+            for key, value in item.items():
+                if isinstance(value, tuple): # если значение ключа в виде кортежа, то данные записываются
+                    writer.writerow([key, value[0], value[1], value[2] if len(value) > 2 else 1])
+                else:
+                    writer.writerow([key, None])
+
+        # Получаем содержимое CSV из StringIO
+        csv_content = output.getvalue()
+
+        # Закрываем StringIO объект
+        output.close()
+
+        return csv_content
 
 
 # Example usage
 if __name__ == '__main__':
     currencies_list = CurrenciesList() # евро и доллары
-    entry_lst = ['R01010', 'R01239']
+    entry_lst = ['R01010', 'R01999']
 
     # Базовый класс
     print("Результат из Базового класса:")
@@ -84,5 +99,5 @@ if __name__ == '__main__':
 
     # CSV-декоратор
     csv_decorator = ConcreteDecoratorCSV()
-    csv_decorator.get_currencies(entry_lst)
-    print("\nВалюты были записаны в файл currencies.csv.")
+    print("\nРезультат в формате CSV:")
+    print(csv_decorator.get_currencies(entry_lst))
